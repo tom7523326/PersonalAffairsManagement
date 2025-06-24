@@ -41,14 +41,16 @@
 
 1. **克隆项目**
    ```bash
-   git clone https://github.com/yourusername/PersonalAffairsManagement.git
+   git clone https://github.com/tom7523326/PersonalAffairsManagement.git
    cd PersonalAffairsManagement
    ```
 
 2. **配置 Firebase**
-   - 在 Firebase Console 创建新项目
+   - 在 [Firebase Console](https://console.firebase.google.com/) 创建新项目
+   - 添加 iOS 应用，Bundle ID 设置为 `com.yourname.PersonalAffairsManagement`
    - 下载 `GoogleService-Info.plist` 文件
-   - 将文件添加到项目根目录
+   - 将文件重命名为 `GoogleService-Info.plist` 并添加到项目根目录的 `PersonalAffairsManagement/` 文件夹中
+   - 参考 `GoogleService-Info.plist.example` 文件了解配置格式
 
 3. **安装依赖**
    - 打开 `PersonalAffairsManagement.xcodeproj`
@@ -57,6 +59,22 @@
 4. **运行项目**
    - 选择目标设备或模拟器
    - 点击运行按钮或使用 `Cmd+R`
+
+### Firebase 配置详细说明
+
+⚠️ **重要安全提醒**: 
+- 不要将你的 `GoogleService-Info.plist` 文件提交到 Git 仓库
+- 该文件包含敏感信息，已在 `.gitignore` 中被忽略
+- 每个开发者需要配置自己的 Firebase 项目
+
+**Firebase 设置步骤**:
+1. 访问 [Firebase Console](https://console.firebase.google.com/)
+2. 创建新项目或选择现有项目
+3. 在项目设置中添加 iOS 应用
+4. 输入 Bundle ID (例如: `com.yourname.PersonalAffairsManagement`)
+5. 下载 `GoogleService-Info.plist` 文件
+6. 将文件放入项目的 `PersonalAffairsManagement/` 目录
+7. 在 Firebase Console 中启用 Authentication 和 Firestore 服务
 
 ## 项目结构
 
@@ -120,6 +138,19 @@ PersonalAffairsManagement/
 - 优化数据查询性能
 - 实现适当的缓存策略
 
+## 安全注意事项
+
+### Firebase 安全
+- 🔒 每个开发者必须配置自己的 Firebase 项目
+- 🔒 不要共享 `GoogleService-Info.plist` 文件
+- 🔒 定期检查 Firebase 控制台的使用情况
+- 🔒 设置适当的 Firestore 安全规则
+
+### 数据安全
+- 🔒 密码使用本地加密存储
+- 🔒 敏感数据不存储在云端
+- 🔒 定期备份重要数据
+
 ## 贡献指南
 
 1. Fork 项目
@@ -136,7 +167,7 @@ PersonalAffairsManagement/
 
 - 项目维护者: [Your Name]
 - 邮箱: [your.email@example.com]
-- 项目链接: [https://github.com/yourusername/PersonalAffairsManagement](https://github.com/yourusername/PersonalAffairsManagement)
+- 项目链接: [https://github.com/tom7523326/PersonalAffairsManagement](https://github.com/tom7523326/PersonalAffairsManagement)
 
 ## 更新日志
 
@@ -144,4 +175,5 @@ PersonalAffairsManagement/
 - 初始版本发布
 - 实现核心功能模块
 - 集成 Firebase 服务
-- 完成基础 UI 设计 
+- 完成基础 UI 设计
+- 添加安全配置说明 
