@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		16E3A6112E09365000CE4E3F /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 16E3A6102E09365000CE4E3F /* FirebaseAuth */; };
+		16E3A6132E09365000CE4E3F /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 16E3A6122E09365000CE4E3F /* FirebaseFirestore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		16BD9CBB2E0870AC00155916 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +57,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				16E3A6112E09365000CE4E3F /* FirebaseAuth in Frameworks */,
+				16E3A6132E09365000CE4E3F /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +119,8 @@
 			);
 			name = PersonalAffairsManagement;
 			packageProductDependencies = (
+				16E3A6102E09365000CE4E3F /* FirebaseAuth */,
+				16E3A6122E09365000CE4E3F /* FirebaseFirestore */,
 			);
 			productName = PersonalAffairsManagement;
 			productReference = 16BD9CAA2E0870AA00155916 /* PersonalAffairsManagement.app */;
@@ -195,6 +204,9 @@
 			);
 			mainGroup = 16BD9CA12E0870AA00155916;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				16E3A60F2E09365000CE4E3F /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 16BD9CAB2E0870AA00155916 /* Products */;
 			projectDirPath = "";
@@ -412,7 +424,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com..PersonalAffairsManagement;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shoulin.PersonalAffairsManagement;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -451,7 +463,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com..PersonalAffairsManagement;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shoulin.PersonalAffairsManagement;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -593,6 +605,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		16E3A60F2E09365000CE4E3F /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.14.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		16E3A6102E09365000CE4E3F /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 16E3A60F2E09365000CE4E3F /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		16E3A6122E09365000CE4E3F /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 16E3A60F2E09365000CE4E3F /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 16BD9CA22E0870AA00155916 /* Project object */;
 }

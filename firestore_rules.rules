@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 用户只能访问自己的数据
+    match /users/{userId} {
+      // 允许用户读取和写入自己的用户文档
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // 用户子集合的规则
+      match /{collection}/{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // 全局集合的规则（如果需要）
+    match /{document=**} {
+      // 默认拒绝所有访问
+      allow read, write: if false;
+    }
+  }
+} 
