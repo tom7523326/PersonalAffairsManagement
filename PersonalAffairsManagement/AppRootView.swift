@@ -2,14 +2,22 @@ import SwiftUI
 import SwiftData
 
 struct AppRootView: View {
-    @StateObject private var cloudService = CloudService.shared
+    @State private var selection: SidebarItem? = .dashboard
+    @State private var showingAddSheet = false
+    @State private var addSheetType: AddSheetType? = nil
     
     var body: some View {
-        VStack {
-            if cloudService.isAuthenticated {
-                MainTabView()
-            } else {
-                AuthenticationView()
+        NavigationSplitView {
+            ModernSidebarView(selection: $selection) { type in
+                addSheetType = type
+                showingAddSheet = true
+            }
+        } detail: {
+            DetailContentView(selection: selection)
+        }
+        .sheet(isPresented: $showingAddSheet) {
+            if let type = addSheetType {
+                AddItemSheet(type: type)
             }
         }
     }
