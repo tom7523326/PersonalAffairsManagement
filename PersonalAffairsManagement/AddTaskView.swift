@@ -75,6 +75,11 @@ struct AddTaskView: View {
                     dueDate = presetDueDate
                     hasDueDate = true
                 }
+                
+                // 调试信息
+                print("[AddTaskView] 视图已加载")
+                print("[AddTaskView] 可用项目数量: \(projects.count)")
+                print("[AddTaskView] 传入的项目: \(project?.name ?? "无")")
             }
             .alert("提示", isPresented: $showingAlert) {
                 Button("确定") {
@@ -165,15 +170,28 @@ struct AddTaskView: View {
     }
     
     private var projectSection: some View {
-        Group {
+        Section(header: Text("项目")) {
             if let project = project {
-                Section("项目") {
-                    HStack {
-                        Circle()
-                            .fill(Color(hex: project.colorHex) ?? .gray)
-                            .frame(width: 20, height: 20)
-                        Text(project.name)
-                            .foregroundColor(.secondary)
+                // 如果直接传入了项目，显示项目信息
+                HStack {
+                    Circle()
+                        .fill(Color(hex: project.colorHex) ?? .gray)
+                        .frame(width: 20, height: 20)
+                    Text(project.name)
+                        .foregroundColor(.secondary)
+                }
+            } else {
+                // 如果没有直接传入项目，显示项目选择器
+                Picker("选择项目", selection: $selectedProject) {
+                    Text("无项目").tag(nil as Project?)
+                    ForEach(projects) { project in
+                        HStack {
+                            Circle()
+                                .fill(Color(hex: project.colorHex) ?? .gray)
+                                .frame(width: 12, height: 12)
+                            Text(project.name)
+                        }
+                        .tag(project as Project?)
                     }
                 }
             }
@@ -185,26 +203,40 @@ struct AddTaskView: View {
     }
     
     private func saveTask() {
+        print("[AddTaskView] 开始保存任务")
+        print("[AddTaskView] 标题: '\(title)'")
+        print("[AddTaskView] 描述: '\(taskDescription)'")
+        print("[AddTaskView] 优先级: \(priority)")
+        print("[AddTaskView] 项目: \(project?.name ?? selectedProject?.name ?? "无")")
+        
         // 验证输入
         let validations = [
             "title": InputValidator.validateTitle(title.trimmingCharacters(in: .whitespacesAndNewlines)),
             "description": InputValidator.validateDescription(taskDescription)
         ]
         
+        print("[AddTaskView] 验证结果: \(validations)")
+        
         guard formValidator.validateForm(validations) else {
+            print("[AddTaskView] 验证失败，错误: \(formValidator.errors)")
             return
         }
         
+        print("[AddTaskView] 验证通过，开始保存")
         isSaving = true
         
         Task {
             do {
+                // 使用传入的project或用户选择的project
+                let finalProject = project ?? selectedProject
+                print("[AddTaskView] 最终项目: \(finalProject?.name ?? "无")")
+                
                 let newTask = WorkTask(
                     title: title.trimmingCharacters(in: .whitespacesAndNewlines),
                     taskDescription: taskDescription.trimmingCharacters(in: .whitespacesAndNewlines),
                     priority: priority,
                     dueDate: hasDueDate ? dueDate : nil,
-                    project: project
+                    project: finalProject
                 )
                 newTask.reminderDate = hasReminder ? reminderDate : nil
                 newTask.repeatRule = hasRepeat ? repeatRule : nil
@@ -212,19 +244,30 @@ struct AddTaskView: View {
                 newTask.parentTask = parentTask
                 newTask.status = .pending
                 
+                print("[AddTaskView] 任务对象创建成功: \(newTask.title)")
+                print("[AddTaskView] 任务ID: \(newTask.id)")
+                
                 modelContext.insert(newTask)
+                print("[AddTaskView] 任务已插入到ModelContext")
+                
                 try modelContext.save()
+                print("[AddTaskView] ModelContext保存成功")
                 
                 await MainActor.run {
                     isSaving = false
                     alertMessage = "任务保存成功！"
                     isSuccess = true
                     showingAlert = true
+                    print("[AddTaskView] 保存完成，显示成功提示")
                 }
             } catch {
+                print("[AddTaskView] 保存失败: \(error)")
+                print("[AddTaskView] 错误详情: \(error.localizedDescription)")
+                
                 await MainActor.run {
                     isSaving = false
-                    ErrorHandler.shared.handle(AppError.dataError("保存任务失败: \(error.localizedDescription)"))
+                    alertMessage = "保存失败: \(error.localizedDescription)"
+                    showingAlert = true
                 }
             }
         }

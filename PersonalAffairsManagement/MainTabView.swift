@@ -3,19 +3,29 @@ import SwiftUI
 struct MainTabView: View {
     var body: some View {
         TabView {
-            WorkTaskView(filter: .all)
+            DashboardView()
                 .tabItem {
-                    Label("工作任务", systemImage: "briefcase.fill")
+                    Label("仪表盘", systemImage: "chart.bar.fill")
+                }
+            
+            WorkTaskView()
+                .tabItem {
+                    Label("任务", systemImage: "checklist")
+                }
+            
+            PomodoroView()
+                .tabItem {
+                    Label("专注", systemImage: "timer")
+                }
+            
+            CalendarView()
+                .tabItem {
+                    Label("日历", systemImage: "calendar")
                 }
             
             FinancialManagementView()
                 .tabItem {
-                    Label("财务管理", systemImage: "dollarsign.circle.fill")
-                }
-            
-            DashboardView()
-                .tabItem {
-                    Label("仪表盘", systemImage: "chart.pie.fill")
+                    Label("财务", systemImage: "dollarsign.circle.fill")
                 }
             
             PasswordBoxView()

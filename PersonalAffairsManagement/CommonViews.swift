@@ -2,76 +2,110 @@ import SwiftUI
 import SwiftData
 import Combine
 
-// MARK: - 信息行组件
+// MARK: - 信息行组件 - 增强交互
 struct InfoRow: View {
     let title: String
     let value: String
     var canCopy: Bool = false
     var isLink: Bool = false
     var icon: String? = nil
+    var action: (() -> Void)? = nil
     
     @State private var showingCopiedAlert = false
+    @State private var isPressed = false
     
     var body: some View {
-        HStack(spacing: DesignSystem.Spacing.md) {
-            if let icon = icon {
-                Image(systemName: icon)
+        Button(action: {
+            if let action = action {
+                action()
+            } else if canCopy {
+                UIPasteboard.general.string = value
+                showingCopiedAlert = true
+            }
+        }) {
+            HStack(spacing: DesignSystem.Spacing.md) {
+                if let icon = icon {
+                    Image(systemName: icon)
+                        .foregroundColor(DesignSystem.Colors.secondaryText)
+                        .frame(width: 20)
+                }
+                
+                Text(title)
+                    .font(DesignSystem.Typography.subheadline)
                     .foregroundColor(DesignSystem.Colors.secondaryText)
-                    .frame(width: 20)
-            }
-            
-            Text(title)
-                .font(DesignSystem.Typography.subheadline)
-                .foregroundColor(DesignSystem.Colors.secondaryText)
-                .frame(width: 80, alignment: .leading)
-            
-            if isLink {
-                Link(value, destination: URL(string: value) ?? URL(string: "https://example.com")!)
-                    .font(DesignSystem.Typography.body)
-                    .foregroundColor(DesignSystem.Colors.primary)
-            } else {
-                Text(value)
-                    .font(DesignSystem.Typography.body)
-                    .foregroundColor(DesignSystem.Colors.text)
-            }
-            
-            Spacer()
-            
-            if canCopy {
-                Button(action: {
-                    UIPasteboard.general.string = value
-                    showingCopiedAlert = true
-                }) {
-                    Image(systemName: "doc.on.doc")
+                    .frame(width: 80, alignment: .leading)
+                
+                if isLink {
+                    Link(value, destination: URL(string: value) ?? URL(string: "https://example.com")!)
+                        .font(DesignSystem.Typography.body)
+                        .foregroundColor(DesignSystem.Colors.primary)
+                } else {
+                    Text(value)
+                        .font(DesignSystem.Typography.body)
+                        .foregroundColor(DesignSystem.Colors.text)
+                }
+                
+                Spacer()
+                
+                if canCopy || action != nil {
+                    Image(systemName: canCopy ? "doc.on.doc" : "chevron.right")
                         .foregroundColor(DesignSystem.Colors.primary)
                         .font(.system(size: 16))
-                }
-                .alert("已复制", isPresented: $showingCopiedAlert) {
-                    Button("确定") { }
+                        .opacity(isPressed ? 0.7 : 1.0)
                 }
             }
+            .padding(.vertical, DesignSystem.Spacing.sm)
+            .padding(.horizontal, DesignSystem.Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                    .fill(isPressed ? DesignSystem.Colors.secondaryBackground : Color.clear)
+            )
         }
-        .padding(.vertical, DesignSystem.Spacing.xs)
+        .buttonStyle(PlainButtonStyle())
+        .scaleEffect(isPressed ? 0.98 : 1.0)
+        .animation(DesignSystem.Animation.quick, value: isPressed)
+        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
+            isPressed = pressing
+        }, perform: {})
+        .alert("已复制", isPresented: $showingCopiedAlert) {
+            Button("确定") { }
+        }
     }
 }
 
-// MARK: - 卡片组件
+// MARK: - 卡片组件 - 增强视觉效果
 struct ModernCard<Content: View>: View {
     let content: Content
     var padding: CGFloat = DesignSystem.Spacing.md
     var shadow: Shadow = DesignSystem.Shadows.small
+    var backgroundColor: Color = DesignSystem.Colors.cardBackground
+    var borderColor: Color? = nil
     
-    init(padding: CGFloat = DesignSystem.Spacing.md, shadow: Shadow = DesignSystem.Shadows.small, @ViewBuilder content: () -> Content) {
+    init(padding: CGFloat = DesignSystem.Spacing.md, 
+         shadow: Shadow = DesignSystem.Shadows.small,
+         backgroundColor: Color = DesignSystem.Colors.cardBackground,
+         borderColor: Color? = nil,
+         @ViewBuilder content: () -> Content) {
         self.padding = padding
         self.shadow = shadow
+        self.backgroundColor = backgroundColor
+        self.borderColor = borderColor
         self.content = content()
     }
     
     var body: some View {
         content
             .padding(padding)
-            .background(DesignSystem.Colors.cardBackground)
+            .background(backgroundColor)
             .cornerRadius(DesignSystem.CornerRadius.md)
+            .overlay(
+                Group {
+                    if let borderColor = borderColor {
+                        RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
+                            .stroke(borderColor, lineWidth: 1)
+                    }
+                }
+            )
             .shadow(
                 color: shadow.color,
                 radius: shadow.radius,
@@ -81,15 +115,22 @@ struct ModernCard<Content: View>: View {
     }
 }
 
-// MARK: - 按钮组件
+// MARK: - 按钮组件 - 增强交互反馈
 struct PrimaryButton: View {
     let title: String
     let action: () -> Void
     var icon: String? = nil
     var isLoading: Bool = false
+    var isDisabled: Bool = false
+    
+    @State private var isPressed = false
     
     var body: some View {
-        Button(action: action) {
+        Button(action: {
+            if !isLoading && !isDisabled {
+                action()
+            }
+        }) {
             HStack(spacing: DesignSystem.Spacing.sm) {
                 if isLoading {
                     ProgressView()
@@ -102,8 +143,32 @@ struct PrimaryButton: View {
                 Text(title)
             }
         }
-        .primaryButtonStyle()
-        .disabled(isLoading)
+        .font(DesignSystem.Typography.headline)
+        .foregroundColor(.white)
+        .padding(.horizontal, DesignSystem.Spacing.lg)
+        .padding(.vertical, DesignSystem.Spacing.md)
+        .background(
+            Group {
+                if isDisabled {
+                    DesignSystem.Colors.secondary
+                } else {
+                    DesignSystem.Colors.primaryGradient
+                }
+            }
+        )
+        .cornerRadius(DesignSystem.CornerRadius.md)
+        .shadow(
+            color: isDisabled ? Color.clear : DesignSystem.Colors.primary.opacity(0.3),
+            radius: isPressed ? 2 : 4,
+            x: 0,
+            y: isPressed ? 1 : 2
+        )
+        .scaleEffect(isPressed ? 0.98 : 1.0)
+        .disabled(isLoading || isDisabled)
+        .animation(DesignSystem.Animation.spring, value: isPressed)
+        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
+            isPressed = pressing
+        }, perform: {})
     }
 }
 
@@ -111,9 +176,16 @@ struct SecondaryButton: View {
     let title: String
     let action: () -> Void
     var icon: String? = nil
+    var isDisabled: Bool = false
+    
+    @State private var isPressed = false
     
     var body: some View {
-        Button(action: action) {
+        Button(action: {
+            if !isDisabled {
+                action()
+            }
+        }) {
             HStack(spacing: DesignSystem.Spacing.sm) {
                 if let icon = icon {
                     Image(systemName: icon)
@@ -121,30 +193,75 @@ struct SecondaryButton: View {
                 Text(title)
             }
         }
-        .secondaryButtonStyle()
+        .font(DesignSystem.Typography.headline)
+        .foregroundColor(isDisabled ? DesignSystem.Colors.tertiaryText : DesignSystem.Colors.primary)
+        .padding(.horizontal, DesignSystem.Spacing.lg)
+        .padding(.vertical, DesignSystem.Spacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
+                .fill(isDisabled ? DesignSystem.Colors.tertiaryBackground : DesignSystem.Colors.primaryLight)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
+                .stroke(
+                    isDisabled ? DesignSystem.Colors.border : DesignSystem.Colors.primary.opacity(0.3),
+                    lineWidth: 1
+                )
+        )
+        .scaleEffect(isPressed ? 0.98 : 1.0)
+        .disabled(isDisabled)
+        .animation(DesignSystem.Animation.spring, value: isPressed)
+        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
+            isPressed = pressing
+        }, perform: {})
     }
 }
 
-// MARK: - 输入框组件
+// MARK: - 输入框组件 - 增强用户体验
 struct ModernTextField: View {
     let placeholder: String
     @Binding var text: String
     var icon: String? = nil
     var keyboardType: UIKeyboardType = .default
     var textContentType: UITextContentType? = nil
+    var isError: Bool = false
+    var errorMessage: String? = nil
+    
+    @FocusState private var isFocused: Bool
     
     var body: some View {
-        HStack(spacing: DesignSystem.Spacing.sm) {
-            if let icon = icon {
-                Image(systemName: icon)
-                    .foregroundColor(DesignSystem.Colors.secondaryText)
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+            HStack(spacing: DesignSystem.Spacing.sm) {
+                if let icon = icon {
+                    Image(systemName: icon)
+                        .foregroundColor(isError ? DesignSystem.Colors.error : DesignSystem.Colors.secondaryText)
+                }
+                
+                TextField(placeholder, text: $text)
+                    .keyboardType(keyboardType)
+                    .textContentType(textContentType)
+                    .focused($isFocused)
             }
+            .padding(DesignSystem.Spacing.md)
+            .background(DesignSystem.Colors.secondaryBackground)
+            .cornerRadius(DesignSystem.CornerRadius.sm)
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                    .stroke(
+                        isError ? DesignSystem.Colors.error : (isFocused ? DesignSystem.Colors.primary : DesignSystem.Colors.border),
+                        lineWidth: isFocused || isError ? 2 : 1
+                    )
+            )
             
-            TextField(placeholder, text: $text)
-                .keyboardType(keyboardType)
-                .textContentType(textContentType)
+            if let errorMessage = errorMessage, isError {
+                Text(errorMessage)
+                    .font(DesignSystem.Typography.caption1)
+                    .foregroundColor(DesignSystem.Colors.error)
+                    .padding(.leading, DesignSystem.Spacing.sm)
+            }
         }
-        .inputFieldStyle()
+        .animation(DesignSystem.Animation.quick, value: isFocused)
+        .animation(DesignSystem.Animation.quick, value: isError)
     }
 }
 
@@ -152,26 +269,65 @@ struct ModernSecureField: View {
     let placeholder: String
     @Binding var text: String
     var icon: String? = nil
+    var isError: Bool = false
+    var errorMessage: String? = nil
+    
+    @FocusState private var isFocused: Bool
+    @State private var isPasswordVisible = false
     
     var body: some View {
-        HStack(spacing: DesignSystem.Spacing.sm) {
-            if let icon = icon {
-                Image(systemName: icon)
-                    .foregroundColor(DesignSystem.Colors.secondaryText)
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+            HStack(spacing: DesignSystem.Spacing.sm) {
+                if let icon = icon {
+                    Image(systemName: icon)
+                        .foregroundColor(isError ? DesignSystem.Colors.error : DesignSystem.Colors.secondaryText)
+                }
+                
+                Group {
+                    if isPasswordVisible {
+                        TextField(placeholder, text: $text)
+                    } else {
+                        SecureField(placeholder, text: $text)
+                    }
+                }
+                .focused($isFocused)
+                
+                Button(action: { isPasswordVisible.toggle() }) {
+                    Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
+                        .foregroundColor(DesignSystem.Colors.secondaryText)
+                }
             }
+            .padding(DesignSystem.Spacing.md)
+            .background(DesignSystem.Colors.secondaryBackground)
+            .cornerRadius(DesignSystem.CornerRadius.sm)
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.sm)
+                    .stroke(
+                        isError ? DesignSystem.Colors.error : (isFocused ? DesignSystem.Colors.primary : DesignSystem.Colors.border),
+                        lineWidth: isFocused || isError ? 2 : 1
+                    )
+            )
             
-            SecureField(placeholder, text: $text)
+            if let errorMessage = errorMessage, isError {
+                Text(errorMessage)
+                    .font(DesignSystem.Typography.caption1)
+                    .foregroundColor(DesignSystem.Colors.error)
+                    .padding(.leading, DesignSystem.Spacing.sm)
+            }
         }
-        .inputFieldStyle()
+        .animation(DesignSystem.Animation.quick, value: isFocused)
+        .animation(DesignSystem.Animation.quick, value: isError)
     }
 }
 
-// MARK: - 标签组件
+// MARK: - 标签组件 - 增强选择反馈
 struct ModernTag: View {
     let title: String
     let color: Color
     var isSelected: Bool = false
     let action: () -> Void
+    
+    @State private var isPressed = false
     
     var body: some View {
         Button(action: action) {
@@ -180,14 +336,25 @@ struct ModernTag: View {
                 .fontWeight(.medium)
                 .padding(.horizontal, DesignSystem.Spacing.sm)
                 .padding(.vertical, DesignSystem.Spacing.xs)
-                .background(isSelected ? color : DesignSystem.Colors.secondaryBackground)
+                .background(
+                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.full)
+                        .fill(isSelected ? color : DesignSystem.Colors.secondaryBackground)
+                )
                 .foregroundColor(isSelected ? .white : DesignSystem.Colors.text)
-                .cornerRadius(DesignSystem.CornerRadius.full)
+                .overlay(
+                    RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.full)
+                        .stroke(isSelected ? color : DesignSystem.Colors.border, lineWidth: 1)
+                )
         }
+        .scaleEffect(isPressed ? 0.95 : 1.0)
+        .animation(DesignSystem.Animation.quick, value: isPressed)
+        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
+            isPressed = pressing
+        }, perform: {})
     }
 }
 
-// MARK: - 空状态组件
+// MARK: - 空状态组件 - 增强引导性
 struct EmptyStateView: View {
     let icon: String
     let title: String
@@ -196,54 +363,62 @@ struct EmptyStateView: View {
     var action: (() -> Void)? = nil
     
     var body: some View {
-        VStack(spacing: DesignSystem.Spacing.lg) {
+        VStack(spacing: DesignSystem.Spacing.xl) {
             Image(systemName: icon)
                 .font(.system(size: 60))
                 .foregroundColor(DesignSystem.Colors.secondaryText)
+                .opacity(0.6)
             
-            VStack(spacing: DesignSystem.Spacing.sm) {
+            VStack(spacing: DesignSystem.Spacing.md) {
                 Text(title)
                     .font(DesignSystem.Typography.title3)
                     .foregroundColor(DesignSystem.Colors.text)
+                    .multilineTextAlignment(.center)
                 
                 Text(subtitle)
                     .font(DesignSystem.Typography.body)
                     .foregroundColor(DesignSystem.Colors.secondaryText)
                     .multilineTextAlignment(.center)
+                    .lineLimit(nil)
             }
             
             if let actionTitle = actionTitle, let action = action {
-                PrimaryButton(title: actionTitle, action: action)
+                PrimaryButton(title: actionTitle, action: action, icon: "plus")
             }
         }
-        .padding(DesignSystem.Spacing.xl)
+        .padding(DesignSystem.Spacing.xxl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
-// MARK: - 加载状态组件
+// MARK: - 加载状态组件 - 增强反馈
 struct LoadingView: View {
     let message: String
     
     var body: some View {
-        VStack(spacing: DesignSystem.Spacing.md) {
+        VStack(spacing: DesignSystem.Spacing.lg) {
             ProgressView()
                 .scaleEffect(1.2)
-                .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                .progressViewStyle(CircularProgressViewStyle(tint: DesignSystem.Colors.primary))
+            
             Text(message)
                 .font(DesignSystem.Typography.body)
                 .foregroundColor(DesignSystem.Colors.secondaryText)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .background(DesignSystem.Colors.background)
     }
 }
 
-// MARK: - 搜索栏组件
+// MARK: - 搜索栏组件 - 增强交互
 struct ModernSearchBar: View {
     @Binding var text: String
     let placeholder: String
     var onSearch: (() -> Void)? = nil
+    var onClear: (() -> Void)? = nil
+    
+    @FocusState private var isFocused: Bool
     
     var body: some View {
         HStack(spacing: DesignSystem.Spacing.sm) {
@@ -252,20 +427,30 @@ struct ModernSearchBar: View {
             
             TextField(placeholder, text: $text)
                 .textFieldStyle(PlainTextFieldStyle())
+                .focused($isFocused)
                 .onSubmit {
                     onSearch?()
                 }
             
             if !text.isEmpty {
-                Button(action: { text = "" }) {
+                Button(action: { 
+                    text = ""
+                    onClear?()
+                }) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(DesignSystem.Colors.secondaryText)
+                        .font(.system(size: 16))
                 }
             }
         }
         .padding(DesignSystem.Spacing.md)
         .background(DesignSystem.Colors.secondaryBackground)
         .cornerRadius(DesignSystem.CornerRadius.md)
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.md)
+                .stroke(isFocused ? DesignSystem.Colors.primary : DesignSystem.Colors.border, lineWidth: isFocused ? 2 : 1)
+        )
+        .animation(DesignSystem.Animation.quick, value: isFocused)
     }
 }
 
@@ -282,11 +467,14 @@ struct ModernDivider: View {
     }
 }
 
-// MARK: - 徽章组件
+// MARK: - 徽章组件 - 增强视觉效果
 struct ModernBadge: View {
     let text: String
     let color: Color
     var size: BadgeSize = .medium
+    var isAnimated: Bool = false
+    
+    @State private var isAnimating = false
     
     enum BadgeSize {
         case small, medium, large
@@ -311,54 +499,123 @@ struct ModernBadge: View {
     var body: some View {
         Text(text)
             .font(size.fontSize)
-            .fontWeight(.medium)
+            .fontWeight(.semibold)
             .foregroundColor(.white)
             .padding(.horizontal, size.padding)
             .padding(.vertical, size.padding / 2)
-            .background(color)
-            .cornerRadius(DesignSystem.CornerRadius.full)
+            .background(
+                RoundedRectangle(cornerRadius: DesignSystem.CornerRadius.full)
+                    .fill(color)
+            )
+            .scaleEffect(isAnimating ? 1.1 : 1.0)
+            .animation(
+                isAnimated ? DesignSystem.Animation.spring.repeatForever(autoreverses: true) : nil,
+                value: isAnimating
+            )
+            .onAppear {
+                if isAnimated {
+                    isAnimating = true
+                }
+            }
+    }
+}
+
+// MARK: - 开关组件
+struct ModernToggle: View {
+    let title: String
+    @Binding var isOn: Bool
+    var icon: String? = nil
+    
+    var body: some View {
+        HStack {
+            if let icon = icon {
+                Image(systemName: icon)
+                    .foregroundColor(DesignSystem.Colors.secondaryText)
+                    .frame(width: 20)
+            }
+            
+            Text(title)
+                .font(DesignSystem.Typography.body)
+                .foregroundColor(DesignSystem.Colors.text)
+            
+            Spacer()
+            
+            Toggle("", isOn: $isOn)
+                .toggleStyle(SwitchToggleStyle(tint: DesignSystem.Colors.primary))
+        }
+        .padding(.vertical, DesignSystem.Spacing.sm)
+    }
+}
+
+// MARK: - 选择器组件
+struct ModernPicker<SelectionValue: Hashable>: View {
+    let title: String
+    @Binding var selection: SelectionValue
+    let options: [(SelectionValue, String)]
+    var icon: String? = nil
+    
+    var body: some View {
+        HStack {
+            if let icon = icon {
+                Image(systemName: icon)
+                    .foregroundColor(DesignSystem.Colors.secondaryText)
+                    .frame(width: 20)
+            }
+            
+            Text(title)
+                .font(DesignSystem.Typography.body)
+                .foregroundColor(DesignSystem.Colors.text)
+            
+            Spacer()
+            
+            Picker("", selection: $selection) {
+                ForEach(options, id: \.0) { option in
+                    Text(option.1).tag(option.0)
+                }
+            }
+            .pickerStyle(MenuPickerStyle())
+        }
+        .padding(.vertical, DesignSystem.Spacing.sm)
     }
 }
 
 // MARK: - 预览
 #Preview {
-    VStack(spacing: DesignSystem.Spacing.lg) {
-        InfoRow(title: "标题", value: "内容", canCopy: true, icon: "doc.text")
-        InfoRow(title: "链接", value: "https://example.com", canCopy: true, isLink: true, icon: "link")
-        
-        ModernCard {
-            VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
-                Text("卡片标题")
-                    .font(DesignSystem.Typography.headline)
-                Text("卡片内容")
-                    .font(DesignSystem.Typography.body)
+    ScrollView {
+        VStack(spacing: DesignSystem.Spacing.lg) {
+            InfoRow(title: "标题", value: "内容", canCopy: true, icon: "doc.text")
+            InfoRow(title: "链接", value: "https://example.com", canCopy: true, isLink: true, icon: "link")
+            
+            ModernCard {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+                    Text("卡片标题")
+                        .font(DesignSystem.Typography.headline)
+                    Text("卡片内容")
+                        .font(DesignSystem.Typography.body)
+                }
             }
+            
+            HStack {
+                PrimaryButton(title: "主要按钮", action: {})
+                SecondaryButton(title: "次要按钮", action: {})
+            }
+            
+            ModernTextField(placeholder: "输入文本", text: .constant(""), icon: "textformat")
+            ModernSecureField(placeholder: "输入密码", text: .constant(""), icon: "lock")
+            
+            HStack {
+                ModernTag(title: "标签1", color: .blue, isSelected: true) {}
+                ModernTag(title: "标签2", color: .green) {}
+            }
+            
+            ModernBadge(text: "新", color: .red, isAnimated: true)
+            
+            ModernToggle(title: "开关选项", isOn: .constant(true), icon: "bell")
+            
+            ModernSearchBar(text: .constant(""), placeholder: "搜索...")
         }
-        
-        HStack {
-            PrimaryButton(title: "主要按钮", action: {})
-            SecondaryButton(title: "次要按钮", action: {})
-        }
-        
-        ModernTextField(placeholder: "输入文本", text: .constant(""), icon: "textformat")
-        
-        HStack {
-            ModernTag(title: "标签1", color: .blue, isSelected: true) {}
-            ModernTag(title: "标签2", color: .green) {}
-        }
-        
-        ModernBadge(text: "新", color: .red)
+        .padding()
     }
-    .padding()
-}
-
-// MARK: - 添加项目类型
-enum AddSheetType {
-    case task
-    case financialRecord
-    case password
-    case virtualAsset
-    case project
 }
 
 // MARK: - 添加项目表单
@@ -371,28 +628,22 @@ struct AddItemSheet: View {
                 switch type {
                 case .task:
                     AddTaskView()
+                        .navigationTitle("添加任务")
+                        .navigationBarTitleDisplayMode(.inline)
                 case .financialRecord:
                     AddFinancialRecordView()
+                        .navigationTitle("添加财务记录")
+                        .navigationBarTitleDisplayMode(.inline)
                 case .password:
                     AddPasswordView()
+                        .navigationTitle("添加密码")
+                        .navigationBarTitleDisplayMode(.inline)
                 case .virtualAsset:
                     AddAssetView()
-                case .project:
-                    AddProjectView()
+                        .navigationTitle("添加虚拟资产")
+                        .navigationBarTitleDisplayMode(.inline)
                 }
             }
-            .navigationTitle(getTitle())
-            .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-    
-    private func getTitle() -> String {
-        switch type {
-        case .task: return "添加任务"
-        case .financialRecord: return "添加财务记录"
-        case .password: return "添加密码"
-        case .virtualAsset: return "添加虚拟资产"
-        case .project: return "添加项目"
         }
     }
 }
@@ -632,13 +883,4 @@ private class CacheData: NSObject {
         self.assets = assets
         self.timestamp = timestamp
     }
-}
-
-// MARK: - 任务过滤器枚举
-enum TaskFilter {
-    case inbox
-    case today
-    case upcoming
-    case all
-    case project(Project)
 } 

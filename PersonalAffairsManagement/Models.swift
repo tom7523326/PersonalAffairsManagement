@@ -17,9 +17,7 @@ final class Project {
     var colorHex: String // 存储颜色的十六进制字符串
     var createdAt: Date
     
-    // 使用 @Relationship 来管理一对多关系
-    // a project can have many tasks
-    @Relationship(deleteRule: .cascade, inverse: \WorkTask.project)
+    // 简化关系定义，避免循环引用
     var tasks: [WorkTask]?
     
     init(name: String, colorHex: String) {
@@ -51,13 +49,11 @@ final class WorkTask {
     var repeatRule: RepeatRule?
     var repeatInterval: Int = 1
     
-    // 关系
+    // 简化关系定义，避免循环引用
     var project: Project?
     
     // For subtasks
     var parentTask: WorkTask?
-    
-    @Relationship(deleteRule: .cascade, inverse: \WorkTask.parentTask)
     var subtasks: [WorkTask]?
     
     init(title: String, taskDescription: String = "", priority: TaskPriority = .medium, dueDate: Date? = nil, project: Project? = nil) {
@@ -145,6 +141,8 @@ final class FinancialRecord {
     var date: Date
     var recordDescription: String
     var tags: [String]
+    var notes: String?
+    var location: String?
     
     init(title: String, amount: Double, type: TransactionType, category: FinancialCategory, recordDescription: String = "") {
         self.id = UUID()
@@ -155,6 +153,12 @@ final class FinancialRecord {
         self.date = Date()
         self.recordDescription = recordDescription
         self.tags = []
+        self.notes = nil
+        self.location = nil
+    }
+    
+    var description: String {
+        return title
     }
 }
 

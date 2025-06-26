@@ -11,98 +11,539 @@ import Charts
 
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
-    @StateObject private var dataManager = DataQueryManager()
-    @State private var selectedTimeRange: TimeRange = .month
+    @Query private var tasks: [WorkTask]
+    @Query private var financialRecords: [FinancialRecord]
+    @Query private var budgets: [Budget]
+    @Query private var passwords: [PasswordEntry]
+    @Query private var virtualAssets: [VirtualAsset]
+    
+    @State private var selectedTimeRange: TimeRange = .week
     @State private var showingAddSheet = false
-    @State private var addSheetType: AddSheetType? = nil
+    @State private var selectedAddType: AddSheetType = .task
     
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVStack(spacing: DesignSystem.Spacing.lg) {
-                    // 快速统计网格
-                    QuickStatsGrid(dataManager: dataManager)
-                    
-                    // 任务完成情况图表
-                    TaskCompletionChart(tasks: dataManager.tasks, timeRange: selectedTimeRange)
-                    
-                    // 财务概览部分
-                    FinancialOverviewSection(dataManager: dataManager)
-                }
-                .padding()
+        ScrollView {
+            LazyVStack(spacing: DesignSystem.Spacing.lg) {
+                // 欢迎区域
+                welcomeSection
+                
+                // 快速操作
+                quickActionsSection
+                
+                // 统计概览
+                statisticsSection
+                
+                // 任务完成情况
+                taskCompletionSection
+                
+                // 财务概览
+                financialOverviewSection
+                
+                // 预算状态
+                budgetStatusSection
+                
+                // 最近活动
+                recentActivitySection
             }
-            .navigationTitle("仪表板")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button("添加任务") { 
-                            addSheetType = .task
-                            showingAddSheet = true
-                        }
-                        Button("添加财务记录") { 
-                            addSheetType = .financialRecord
-                            showingAddSheet = true
-                        }
-                        Button("添加密码") { 
-                            addSheetType = .password
-                            showingAddSheet = true
-                        }
-                        Button("添加虚拟资产") { 
-                            addSheetType = .virtualAsset
-                            showingAddSheet = true
-                        }
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundColor(DesignSystem.Colors.primary)
-                    }
+            .padding(.horizontal, DesignSystem.Spacing.md)
+        }
+        .background(DesignSystem.Colors.groupedBackground)
+        .navigationTitle("仪表板")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { showingAddSheet = true }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(DesignSystem.Colors.primary)
                 }
             }
         }
         .sheet(isPresented: $showingAddSheet) {
-            if let type = addSheetType {
-                AddItemSheet(type: type)
+            AddItemSheet(type: selectedAddType)
+        }
+    }
+    
+    // MARK: - 欢迎区域
+    private var welcomeSection: some View {
+        ModernCard(shadow: DesignSystem.Shadows.medium) {
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+                HStack {
+                    VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                        Text("欢迎回来")
+                            .font(DesignSystem.Typography.title2)
+                            .foregroundColor(DesignSystem.Colors.text)
+                        
+                        Text("今天是 \(Date().formatted(date: .complete, time: .omitted))")
+                            .font(DesignSystem.Typography.body)
+                            .foregroundColor(DesignSystem.Colors.secondaryText)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "sun.max.fill")
+                        .font(.title)
+                        .foregroundColor(DesignSystem.Colors.accent)
+                }
+                
+                // 今日概览
+                HStack(spacing: DesignSystem.Spacing.lg) {
+                    StatItem(
+                        icon: "checkmark.circle.fill",
+                        value: "\(todayCompletedTasks)",
+                        label: "已完成",
+                        color: DesignSystem.Colors.success
+                    )
+                    
+                    StatItem(
+                        icon: "clock.fill",
+                        value: "\(todayPendingTasks)",
+                        label: "待处理",
+                        color: DesignSystem.Colors.warning
+                    )
+                    
+                    StatItem(
+                        icon: "exclamationmark.triangle.fill",
+                        value: "\(overdueTasks)",
+                        label: "已逾期",
+                        color: DesignSystem.Colors.error
+                    )
+                }
             }
         }
-        .onAppear {
-            dataManager.setModelContext(modelContext)
+    }
+    
+    // MARK: - 快速操作
+    private var quickActionsSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text("快速操作")
+                .font(DesignSystem.Typography.headline)
+                .foregroundColor(DesignSystem.Colors.text)
+            
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: DesignSystem.Spacing.md) {
+                QuickActionCard(
+                    title: "添加任务",
+                    icon: "checklist",
+                    color: DesignSystem.Colors.task,
+                    action: { 
+                        selectedAddType = .task
+                        showingAddSheet = true
+                    }
+                )
+                
+                QuickActionCard(
+                    title: "记录收支",
+                    icon: "dollarsign.circle",
+                    color: DesignSystem.Colors.finance,
+                    action: { 
+                        selectedAddType = .financialRecord
+                        showingAddSheet = true
+                    }
+                )
+                
+                QuickActionCard(
+                    title: "保存密码",
+                    icon: "lock.shield",
+                    color: DesignSystem.Colors.password,
+                    action: { 
+                        selectedAddType = .password
+                        showingAddSheet = true
+                    }
+                )
+                
+                QuickActionCard(
+                    title: "管理资产",
+                    icon: "creditcard",
+                    color: DesignSystem.Colors.asset,
+                    action: { 
+                        selectedAddType = .virtualAsset
+                        showingAddSheet = true
+                    }
+                )
+            }
+        }
+    }
+    
+    // MARK: - 统计概览
+    private var statisticsSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text("数据概览")
+                .font(DesignSystem.Typography.headline)
+                .foregroundColor(DesignSystem.Colors.text)
+            
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: DesignSystem.Spacing.md) {
+                StatCard(
+                    title: "总任务",
+                    value: "\(tasks.count)",
+                    icon: "checklist",
+                    color: DesignSystem.Colors.task
+                )
+                
+                StatCard(
+                    title: "总资产",
+                    value: "¥\(Int(totalAssetValue))",
+                    icon: "creditcard",
+                    color: DesignSystem.Colors.asset
+                )
+                
+                StatCard(
+                    title: "密码数量",
+                    value: "\(passwords.count)",
+                    icon: "lock.shield",
+                    color: DesignSystem.Colors.password
+                )
+                
+                StatCard(
+                    title: "本月收支",
+                    value: "¥\(Int(monthlyNetIncome))",
+                    icon: "dollarsign.circle",
+                    color: monthlyNetIncome >= 0 ? DesignSystem.Colors.success : DesignSystem.Colors.error
+                )
+            }
+        }
+    }
+    
+    // MARK: - 任务完成情况
+    private var taskCompletionSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            HStack {
+                Text("任务完成情况")
+                    .font(DesignSystem.Typography.headline)
+                    .foregroundColor(DesignSystem.Colors.text)
+                
+                Spacer()
+                
+                Picker("时间范围", selection: $selectedTimeRange) {
+                    ForEach(TimeRange.allCases, id: \.self) { range in
+                        Text(range.title).tag(range)
+                    }
+                }
+                .pickerStyle(MenuPickerStyle())
+            }
+            
+            ModernCard {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+                    // 任务完成率
+                    HStack {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                            Text("完成率")
+                                .font(DesignSystem.Typography.body)
+                                .foregroundColor(DesignSystem.Colors.secondaryText)
+                            
+                            Text("\(String(format: "%.1f", taskCompletionRate))%")
+                                .font(DesignSystem.Typography.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(DesignSystem.Colors.text)
+                        }
+                        
+                        Spacer()
+                        
+                        CircularProgressView(
+                            progress: taskCompletionRate / 100,
+                            color: DesignSystem.Colors.success
+                        )
+                    }
+                    
+                    // 任务完成趋势图
+                    if !taskCompletionData.isEmpty {
+                        Chart(taskCompletionData) { data in
+                            BarMark(
+                                x: .value("日期", data.date, unit: .day),
+                                y: .value("完成数", data.completedCount)
+                            )
+                            .foregroundStyle(DesignSystem.Colors.success.gradient)
+                        }
+                        .frame(height: 200)
+                        .chartXAxis {
+                            AxisMarks(values: .stride(by: .day)) { value in
+                                AxisGridLine()
+                                AxisValueLabel(format: .dateTime.day())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - 财务概览
+    private var financialOverviewSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text("财务概览")
+                .font(DesignSystem.Typography.headline)
+                .foregroundColor(DesignSystem.Colors.text)
+            
+            ModernCard {
+                VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                            Text("本月收入")
+                                .font(DesignSystem.Typography.body)
+                                .foregroundColor(DesignSystem.Colors.secondaryText)
+                            
+                            Text("¥\(monthlyIncome, specifier: "%.0f")")
+                                .font(DesignSystem.Typography.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(DesignSystem.Colors.success)
+                        }
+                        
+                        Spacer()
+                        
+                        VStack(alignment: .trailing, spacing: DesignSystem.Spacing.xs) {
+                            Text("本月支出")
+                                .font(DesignSystem.Typography.body)
+                                .foregroundColor(DesignSystem.Colors.secondaryText)
+                            
+                            Text("¥\(monthlyExpense, specifier: "%.0f")")
+                                .font(DesignSystem.Typography.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(DesignSystem.Colors.error)
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    HStack {
+                        Text("净收入")
+                            .font(DesignSystem.Typography.body)
+                            .foregroundColor(DesignSystem.Colors.secondaryText)
+                        
+                        Spacer()
+                        
+                        Text("¥\(monthlyNetIncome, specifier: "%.0f")")
+                            .font(DesignSystem.Typography.title3)
+                            .fontWeight(.bold)
+                            .foregroundColor(monthlyNetIncome >= 0 ? DesignSystem.Colors.success : DesignSystem.Colors.error)
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - 预算状态
+    private var budgetStatusSection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text("预算状态")
+                .font(DesignSystem.Typography.headline)
+                .foregroundColor(DesignSystem.Colors.text)
+            
+            LazyVStack(spacing: DesignSystem.Spacing.sm) {
+                ForEach(budgets.prefix(3)) { budget in
+                    BudgetProgressCard(budget: budget, currentSpending: getCurrentSpending(for: budget))
+                }
+            }
+        }
+    }
+    
+    // MARK: - 最近活动
+    private var recentActivitySection: some View {
+        VStack(alignment: .leading, spacing: DesignSystem.Spacing.md) {
+            Text("最近活动")
+                .font(DesignSystem.Typography.headline)
+                .foregroundColor(DesignSystem.Colors.text)
+            
+            ModernCard {
+                LazyVStack(spacing: DesignSystem.Spacing.sm) {
+                    ForEach(recentActivities.prefix(5)) { activity in
+                        ActivityRow(activity: activity)
+                    }
+                }
+            }
+        }
+    }
+    
+    // MARK: - 计算属性
+    private var todayCompletedTasks: Int {
+        let today = Calendar.current.startOfDay(for: Date())
+        return tasks.filter { task in
+            task.status == .completed && 
+            task.completedAt != nil &&
+            Calendar.current.isDate(task.completedAt!, inSameDayAs: today)
+        }.count
+    }
+    
+    private var todayPendingTasks: Int {
+        let today = Calendar.current.startOfDay(for: Date())
+        return tasks.filter { task in
+            task.status == .pending && 
+            task.dueDate != nil &&
+            Calendar.current.isDate(task.dueDate!, inSameDayAs: today)
+        }.count
+    }
+    
+    private var overdueTasks: Int {
+        let today = Date()
+        return tasks.filter { task in
+            task.status == .pending && 
+            task.dueDate != nil &&
+            task.dueDate! < today
+        }.count
+    }
+    
+    private var taskCompletionRate: Double {
+        let completed = tasks.filter { $0.status == .completed }.count
+        let total = tasks.count
+        return total > 0 ? Double(completed) / Double(total) * 100 : 0
+    }
+    
+    private var taskCompletionData: [TaskCompletionData] {
+        let calendar = Calendar.current
+        let endDate = Date()
+        let startDate = calendar.date(byAdding: .day, value: -6, to: endDate)!
+        
+        var data: [TaskCompletionData] = []
+        var currentDate = startDate
+        
+        while currentDate <= endDate {
+            let dayStart = calendar.startOfDay(for: currentDate)
+            let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart)!
+            
+            let completedCount = tasks.filter { task in
+                task.status == .completed &&
+                task.completedAt != nil &&
+                task.completedAt! >= dayStart &&
+                task.completedAt! < dayEnd
+            }.count
+            
+            data.append(TaskCompletionData(date: currentDate, completedCount: completedCount))
+            currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
+        }
+        
+        return data
+    }
+    
+    private var monthlyIncome: Double {
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfMonth = calendar.dateInterval(of: .month, for: now)?.start ?? now
+        
+        return financialRecords.filter { record in
+            record.type == .income && record.date >= startOfMonth
+        }.reduce(0) { $0 + $1.amount }
+    }
+    
+    private var monthlyExpense: Double {
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfMonth = calendar.dateInterval(of: .month, for: now)?.start ?? now
+        
+        return financialRecords.filter { record in
+            record.type == .expense && record.date >= startOfMonth
+        }.reduce(0) { $0 + $1.amount }
+    }
+    
+    private var monthlyNetIncome: Double {
+        return monthlyIncome - monthlyExpense
+    }
+    
+    private var totalAssetValue: Double {
+        return virtualAssets.reduce(0) { $0 + $1.value }
+    }
+    
+    private var recentActivities: [Activity] {
+        var activities: [Activity] = []
+        
+        // 最近完成的任务
+        let recentCompletedTasks = tasks
+            .filter { $0.status == .completed && $0.completedAt != nil }
+            .sorted { $0.completedAt! > $1.completedAt! }
+            .prefix(3)
+        
+        for task in recentCompletedTasks {
+            activities.append(Activity(
+                id: task.id.uuidString,
+                title: "完成任务",
+                subtitle: task.title,
+                icon: "checkmark.circle.fill",
+                color: DesignSystem.Colors.success,
+                date: task.completedAt!
+            ))
+        }
+        
+        // 最近的财务记录
+        let recentRecords = financialRecords
+            .sorted { $0.date > $1.date }
+            .prefix(3)
+        
+        for record in recentRecords {
+            activities.append(Activity(
+                id: record.id.uuidString,
+                title: record.type == .income ? "收入记录" : "支出记录",
+                subtitle: record.title,
+                icon: record.type == .income ? "arrow.down.circle.fill" : "arrow.up.circle.fill",
+                color: record.type == .income ? DesignSystem.Colors.success : DesignSystem.Colors.error,
+                date: record.date
+            ))
+        }
+        
+        return activities.sorted { $0.date > $1.date }
+    }
+    
+    // MARK: - 预算相关
+    private func getCurrentSpending(for budget: Budget) -> Double {
+        return financialRecords
+            .filter { $0.type == .expense && $0.category == budget.category }
+            .reduce(0) { $0 + $1.amount }
+    }
+}
+
+// MARK: - 数据模型
+struct TaskCompletionData: Identifiable {
+    let id = UUID()
+    let date: Date
+    let completedCount: Int
+}
+
+struct FinancialData: Identifiable {
+    let id = UUID()
+    let date: Date
+    let amount: Double
+    let type: TransactionType
+}
+
+struct Activity: Identifiable {
+    let id: String
+    let title: String
+    let subtitle: String
+    let icon: String
+    let color: Color
+    let date: Date
+}
+
+// MARK: - 时间范围枚举
+enum TimeRange: CaseIterable {
+    case day, week, month, quarter, year
+    
+    var title: String {
+        switch self {
+        case .day: return "今天"
+        case .week: return "本周"
+        case .month: return "本月"
+        case .quarter: return "本季度"
+        case .year: return "本年"
         }
     }
 }
 
-// MARK: - 快速统计网格
-struct QuickStatsGrid: View {
-    let dataManager: DataQueryManager
+// MARK: - 添加类型枚举
+enum AddSheetType: CaseIterable {
+    case task, financialRecord, password, virtualAsset
     
-    var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: DesignSystem.Spacing.md) {
-            StatCard(
-                title: "待办任务",
-                value: "\(dataManager.tasks.filter { $0.project == nil }.count)",
-                icon: "checklist",
-                color: .blue
-            )
-            
-            StatCard(
-                title: "本月支出",
-                value: "¥\(String(format: "%.0f", dataManager.records.filter { $0.type == .expense && Calendar.current.isDate($0.date, equalTo: Date(), toGranularity: .month) }.reduce(0) { $0 + $1.amount }))",
-                icon: "creditcard",
-                color: .red
-            )
-            
-            StatCard(
-                title: "密码数量",
-                value: "\(dataManager.passwords.count)",
-                icon: "lock.shield",
-                color: .purple
-            )
-            
-            StatCard(
-                title: "虚拟资产",
-                value: "¥\(String(format: "%.0f", dataManager.assets.reduce(0) { $0 + $1.value }))",
-                icon: "gift",
-                color: .orange
-            )
+    var title: String {
+        switch self {
+        case .task: return "任务"
+        case .financialRecord: return "财务记录"
+        case .password: return "密码"
+        case .virtualAsset: return "虚拟资产"
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .task: return "checklist"
+        case .financialRecord: return "dollarsign.circle"
+        case .password: return "lock.shield"
+        case .virtualAsset: return "creditcard"
         }
     }
 }
@@ -116,274 +557,125 @@ struct StatCard: View {
     
     var body: some View {
         ModernCard {
-            VStack(alignment: .leading, spacing: DesignSystem.Spacing.sm) {
+            VStack(spacing: DesignSystem.Spacing.sm) {
                 Image(systemName: icon)
-                    .font(.system(size: 20))
+                    .font(.title2)
                     .foregroundColor(color)
                 
                 Text(value)
-                    .font(DesignSystem.Typography.title2)
+                    .font(DesignSystem.Typography.title3)
                     .fontWeight(.bold)
                     .foregroundColor(DesignSystem.Colors.text)
                 
                 Text(title)
-                    .font(DesignSystem.Typography.footnote)
+                    .font(DesignSystem.Typography.caption1)
                     .foregroundColor(DesignSystem.Colors.secondaryText)
             }
+            .frame(maxWidth: .infinity)
         }
     }
 }
 
-// MARK: - 任务完成情况图表
-struct TaskCompletionChart: View {
-    let tasks: [WorkTask]
-    let timeRange: TimeRange
-
-    struct TaskStats: Identifiable {
-        let id = UUID()
-        let date: Date
-        let count: Int
-        let status: TaskStatus
-    }
-    
-    var data: [TaskStats] {
-        let calendar = Calendar.current
-        let filteredTasks = tasks.filter { task in
-            guard let date = task.dueDate else { return false }
-            return timeRange.contains(date: date)
-        }
-        
-        let groupedByDateAndStatus = Dictionary(grouping: filteredTasks) { task -> Date in
-            return calendar.startOfDay(for: task.dueDate!)
-        }.mapValues { tasksOnDate -> [TaskStatus: Int] in
-            return Dictionary(grouping: tasksOnDate, by: { $0.status }).mapValues { $0.count }
-        }
-
-        var stats: [TaskStats] = []
-        for (date, statusCounts) in groupedByDateAndStatus {
-            for (status, count) in statusCounts {
-                stats.append(TaskStats(date: date, count: count, status: status))
-            }
-        }
-        return stats.sorted(by: { $0.date < $1.date })
-    }
-
-    var body: some View {
-        VStack(alignment: .leading) {
-            Text("任务完成趋势")
-                 .font(DesignSystem.Typography.subheadline)
-                 .foregroundColor(DesignSystem.Colors.secondaryText)
-            
-            if data.isEmpty {
-                ContentUnavailableView("无数据显示", systemImage: "chart.bar.xaxis", description: Text("在所选时间范围内没有任务数据。"))
-                    .frame(height: 150)
-            } else {
-                Chart(data) { stat in
-                    BarMark(
-                        x: .value("日期", stat.date, unit: .day),
-                        y: .value("数量", stat.count)
-                    )
-                    .foregroundStyle(by: .value("状态", stat.status.rawValue))
-                }
-                .chartForegroundStyleScale([
-                    TaskStatus.pending.rawValue: Color.gray,
-                    TaskStatus.inProgress.rawValue: Color.blue,
-                    TaskStatus.completed.rawValue: Color.green,
-                    TaskStatus.cancelled.rawValue: Color.red
-                ])
-                .chartXAxis {
-                    AxisMarks(values: .stride(by: .day)) { _ in
-                        AxisGridLine()
-                        AxisTick()
-                        AxisValueLabel(format: .dateTime.month().day())
-                    }
-                }
-                .frame(height: 150)
-            }
-        }
-    }
-}
-
-// MARK: - 财务概览部分
-struct FinancialOverviewSection: View {
-    let dataManager: DataQueryManager
-    
-    var body: some View {
-        VStack(spacing: DesignSystem.Spacing.md) {
-            FinancialSummaryCard(records: dataManager.records)
-            BudgetStatusView(records: dataManager.records, budgets: dataManager.budgets)
-        }
-        .padding()
-        .background(DesignSystem.Colors.cardBackground)
-        .cornerRadius(DesignSystem.CornerRadius.md)
-    }
-}
-
-// MARK: - 财务摘要卡片
-struct FinancialSummaryCard: View {
-    let records: [FinancialRecord]
-    
-    var body: some View {
-        VStack {
-            HStack {
-                FinancialStatView(title: "总收入", amount: totalIncome, color: .green)
-                Spacer()
-                FinancialStatView(title: "总支出", amount: totalExpense, color: .red)
-                Spacer()
-                FinancialStatView(title: "净收入", amount: netIncome, color: DesignSystem.Colors.text)
-            }
-        }
-    }
-    
-    private var totalIncome: Double {
-        records.filter { $0.type == .income }.reduce(0) { $0 + $1.amount }
-    }
-    
-    private var totalExpense: Double {
-        records.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
-    }
-    
-    private var netIncome: Double {
-        totalIncome - totalExpense
-    }
-}
-
-// MARK: - 单个财务统计
-struct FinancialStatView: View {
-    let title: String
-    let amount: Double
+// MARK: - 统计项目
+struct StatItem: View {
+    let icon: String
+    let value: String
+    let label: String
     let color: Color
-
+    
     var body: some View {
-        VStack(alignment: .leading) {
-            Text(title)
+        VStack(spacing: DesignSystem.Spacing.xs) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(color)
+            
+            Text(value)
+                .font(DesignSystem.Typography.title3)
+                .fontWeight(.bold)
+                .foregroundColor(DesignSystem.Colors.text)
+            
+            Text(label)
                 .font(DesignSystem.Typography.caption1)
                 .foregroundColor(DesignSystem.Colors.secondaryText)
-            Text("¥\(amount, specifier: "%.0f")")
-                .font(DesignSystem.Typography.subheadline)
-                .fontWeight(.semibold)
-                .foregroundColor(color)
         }
     }
 }
 
-// MARK: - 预算状态视图
-struct BudgetStatusView: View {
-    let records: [FinancialRecord]
-    let budgets: [Budget]
+// MARK: - 快速操作卡片
+struct QuickActionCard: View {
+    let title: String
+    let icon: String
+    let color: Color
+    let action: () -> Void
     
     var body: some View {
-        VStack(alignment: .leading) {
-            Text("预算概览")
-                .font(DesignSystem.Typography.subheadline)
-                .foregroundColor(DesignSystem.Colors.secondaryText)
-            
-            if budgets.isEmpty {
-                Text("未设置预算。")
-                    .font(DesignSystem.Typography.body)
-                    .foregroundColor(DesignSystem.Colors.secondaryText)
-            } else {
-                ForEach(budgets) { budget in
-                    BudgetProgressView(budget: budget, currentSpending: spending(for: budget.category))
+        ModernCard {
+            Button(action: action) {
+                VStack(spacing: DesignSystem.Spacing.sm) {
+                    Image(systemName: icon)
+                        .font(.title2)
+                        .foregroundColor(color)
+                    
+                    Text(title)
+                        .font(DesignSystem.Typography.body)
+                        .fontWeight(.medium)
+                        .foregroundColor(DesignSystem.Colors.text)
                 }
+                .frame(maxWidth: .infinity)
             }
+            .buttonStyle(PlainButtonStyle())
         }
-    }
-    
-    private func spending(for category: FinancialCategory) -> Double {
-        let calendar = Calendar.current
-        let now = Date()
-        let budgetCycleStart: Date
-        
-        // This logic assumes budgets reset monthly. Could be adapted for different cycles.
-        let components = calendar.dateComponents([.year, .month], from: now)
-        budgetCycleStart = calendar.date(from: components)!
-
-        return records.filter {
-            $0.category == category &&
-            $0.type == .expense &&
-            $0.date >= budgetCycleStart
-        }.reduce(0) { $0 + $1.amount }
     }
 }
 
-// MARK: - 预算进度条
-struct BudgetProgressView: View {
-    let budget: Budget
-    let currentSpending: Double
-    
-    private var progress: Double {
-        guard budget.amount > 0 else { return 0 }
-        return min(currentSpending / budget.amount, 1.0) // Cap at 100%
-    }
-    
-    private var progressColor: Color {
-        if progress > 0.9 {
-            return .red
-        } else if progress > 0.7 {
-            return .orange
-        } else {
-            return .green
-        }
-    }
+// MARK: - 活动行
+struct ActivityRow: View {
+    let activity: Activity
     
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
-            HStack {
-                Text(budget.category.description)
-                Spacer()
-                Text("¥\(currentSpending, specifier: "%.0f") / ¥\(budget.amount, specifier: "%.0f")")
+        HStack(spacing: DesignSystem.Spacing.sm) {
+            Image(systemName: activity.icon)
+                .font(.title3)
+                .foregroundColor(activity.color)
+                .frame(width: 24)
+            
+            VStack(alignment: .leading, spacing: DesignSystem.Spacing.xs) {
+                Text(activity.title)
+                    .font(DesignSystem.Typography.body)
+                    .foregroundColor(DesignSystem.Colors.text)
+                
+                Text(activity.subtitle)
                     .font(DesignSystem.Typography.caption1)
                     .foregroundColor(DesignSystem.Colors.secondaryText)
             }
             
-            ProgressView(value: progress)
-                .progressViewStyle(LinearProgressViewStyle(tint: progressColor))
+            Spacer()
+            
+            Text(activity.date.formatted(date: .abbreviated, time: .omitted))
+                .font(DesignSystem.Typography.caption2)
+                .foregroundColor(DesignSystem.Colors.secondaryText)
         }
     }
 }
 
-// MARK: - 辅助类型
-enum TimeRange: CaseIterable {
-    case day, week, month, year
-    
-    var title: String {
-        switch self {
-        case .day: return "日"
-        case .week: return "周"
-        case .month: return "月"
-        case .year: return "年"
-        }
-    }
-    
-    func contains(date: Date) -> Bool {
-        let calendar = Calendar.current
-        let now = Date()
-        switch self {
-        case .day:
-            return calendar.isDateInToday(date)
-        case .week:
-            return calendar.isDate(date, equalTo: now, toGranularity: .weekOfYear)
-        case .month:
-            return calendar.isDate(date, equalTo: now, toGranularity: .month)
-        case .year:
-            return calendar.isDate(date, equalTo: now, toGranularity: .year)
-        }
-    }
-}
-
-struct ChartData: Identifiable {
-    let id = UUID()
-    let date: Date
-    let completedCount: Int
-}
-
-struct ActivityItem {
-    let id: String
-    let title: String
-    let subtitle: String
-    let icon: String
+// MARK: - 圆形进度视图
+struct CircularProgressView: View {
+    let progress: Double
     let color: Color
+    
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(color.opacity(0.2), lineWidth: 8)
+            
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(color, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .animation(.easeInOut(duration: 1), value: progress)
+        }
+        .frame(width: 60, height: 60)
+    }
 }
 
 #Preview {

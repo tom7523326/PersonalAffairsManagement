@@ -35,38 +35,24 @@ struct PersonalAffairsManagementApp: App {
     // Use UIApplicaitonDelegateAdaptor to link AppDelegate
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
-    let modelContainer: ModelContainer
-    @StateObject var dataSyncManager: DataSyncManager
-
-    init() {
-        let schema = Schema([
-            Project.self,
-            WorkTask.self,
-            FinancialRecord.self,
-            Budget.self,
-            PasswordEntry.self,
-            VirtualAsset.self
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
-            self.modelContainer = container
-            self._dataSyncManager = StateObject(wrappedValue: DataSyncManager(modelContext: container.mainContext))
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }
+    @StateObject private var themeManager = ThemeManager.shared
+    @StateObject private var cloudService = CloudService.shared
 
     var body: some Scene {
         WindowGroup {
             AppRootView()
-                .modelContainer(modelContainer)
-                .environmentObject(dataSyncManager)
-                .errorHandling() // 添加全局错误处理
-                .onAppear {
-                    dataSyncManager.initializeFirebaseServices()
-                }
+                .environmentObject(themeManager)
+                .environmentObject(cloudService)
+                .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
+                .accentColor(themeManager.accentColor)
         }
+        .modelContainer(for: [
+            WorkTask.self,
+            FinancialRecord.self,
+            Budget.self,
+            PasswordEntry.self,
+            VirtualAsset.self,
+            Project.self
+        ])
     }
 }

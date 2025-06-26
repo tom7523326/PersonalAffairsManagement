@@ -243,7 +243,9 @@ struct TasksForDateView: View {
             } else {
                 List {
                     ForEach(tasks) { task in
-                        TaskRowView(task: task)
+                        TaskRowView(task: task) {
+                            // 切换任务状态的回调
+                        }
                     }
                 }
             }
