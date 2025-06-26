@@ -165,8 +165,8 @@ PersonalAffairsManagement/
 
 ## 联系方式
 
-- 项目维护者: [Your Name]
-- 邮箱: [your.email@example.com]
+- 项目维护者: [汤寿麟]
+- 邮箱: [tangshoulin@gmail.com]
 - 项目链接: [https://github.com/tom7523326/PersonalAffairsManagement](https://github.com/tom7523326/PersonalAffairsManagement)
 
 ## 更新日志
